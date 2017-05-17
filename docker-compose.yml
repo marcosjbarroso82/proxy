@@ -1,0 +1,11 @@
+version: '2'
+services:
+  web:
+    build: .
+    image: proxi:latest
+    command: /bin/bash
+#    command: python manage.py runserver 0.0.0.0:8001
+    volumes:
+      - .:/code
+    ports:
+      - "8001:8001"
