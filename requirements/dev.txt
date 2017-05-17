@@ -1,2 +1,5 @@
+requests
+django
 django-admin-sortable
 jsonfield
+jinja2
