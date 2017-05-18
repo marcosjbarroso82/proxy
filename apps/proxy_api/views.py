@@ -10,7 +10,12 @@ def proxy(request, root_path, slug=None, extra_params=None):
     """
     Ensayo para facebook
     """
-    aps = AccessPoint.objects.filter(slug=slug, env__root_path=root_path)
+    aps = AccessPoint.objects.filter(method=request.method.lower(), slug=slug, env__root_path=root_path)
+    # AccessPoint.objects.filter(slug=slug, env__root_path=root_path)
+
+    if request.method == 'GET':
+        response = request.GET['hub.challenge']
+        return HttpResponse(response)
     payload = json.loads(request.body.decode('utf-8'))
     text = payload['entry'][0]['messaging'][0]['message']['text']
 
@@ -30,8 +35,6 @@ def proxy(request, root_path, slug=None, extra_params=None):
 
         if match and ap.check_condition(request=request, url_path=extra_params):
             return ap.process(request=request, url_path=extra_params)
-        else:
-            import ipdb; ipdb.set_trace()
     # pattern = re.compile('^([0-9]+)+$')
     #import ipdb; ipdb.set_trace()
     #ap = aps[0]
