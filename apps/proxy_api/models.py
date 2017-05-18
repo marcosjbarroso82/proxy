@@ -98,7 +98,7 @@ class AccessPoint(BaseRequest):
         if hash:
             template = Template(hash)
             state_hash_id = template.render(**params)
-            state, created = RequestState.objects.get_or_create(hash_id=state_hash_id)
+            state = RequestState.objects.get(hash_id=state_hash_id)
             # state = RequestState.objects.filter(hash_id=state_hash_id).first()
             return state
         return None # TODO: None ???
