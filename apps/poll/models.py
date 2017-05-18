@@ -56,7 +56,7 @@ class Poll(models.Model):
     def set_vote(self, **kwargs):
         kwargs['poll'] = self
         try:
-            item = self.items.get(id=int(kwargs['value']))
+            item = self.items.get(value=kwargs['value'])
             kwargs['item'] = item
             Vote.objects.create(**kwargs)
         except (ValueError, models.ObjectDoesNotExist) as e:

@@ -3,3 +3,5 @@ django
 django-admin-sortable
 jsonfield
 jinja2
+ipdb
+djangorestframework

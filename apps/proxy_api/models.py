@@ -84,7 +84,7 @@ class AccessPoint(BaseRequest):
                                        help_text='state.counter >= 13 # avalidation that returns True')
 
     env = models.ForeignKey(AccessPointEnvironment)
-    response = JSONField(null=True, blank=True, default=dict)
+    response = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return '%s' % str(self.name)
