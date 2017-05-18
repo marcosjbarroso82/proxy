@@ -84,7 +84,7 @@ class AccessPoint(BaseRequest):
                                        help_text='state.counter >= 13 # avalidation that returns True')
 
     env = models.ForeignKey(AccessPointEnvironment)
-    response = models.TextField(null=True, blank=True)
+    response = JSONField(null=True, blank=True, default=dict)
 
     def __str__(self):
         return '%s' % str(self.name)
@@ -274,7 +274,8 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
 
     def execute(self, access_point_request, params):
         if self.check_condition(params):
-            params['self_param'] = self.params
+#            params['self_param'] = self.params
+            params['self_param'] = replace_jinga_tags_in_dict(self.params, params)
             params = self.execute_pre_request_operation(params)
             params = self.request_definition.execute(access_point_request, params)
             params = self.execute_post_request_operation(params)
