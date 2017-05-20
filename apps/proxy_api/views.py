@@ -10,34 +10,17 @@ def proxy(request, root_path, slug=None, extra_params=None):
     """
     Ensayo para facebook
     """
-    aps = AccessPoint.objects.filter(method=request.method.lower(), slug=slug, env__root_path=root_path)
-    # AccessPoint.objects.filter(slug=slug, env__root_path=root_path)
+    aps = AccessPoint.objects.filter(active=True, method=request.method.lower(), slug=slug, app__root_path=root_path)
 
-    if request.method == 'GET':
-        response = request.GET['hub.challenge']
-        return HttpResponse(response)
+    # if request.method == 'GET':
+    #     response = request.GET['hub.challenge']
+    #     return HttpResponse(response)
     payload = json.loads(request.body.decode('utf-8'))
-    text = payload['entry'][0]['messaging'][0]['message']['text']
 
-    # r'asdfkjdlsfk
-    # TODO: Seems that this filter is the other way around
-    # aps = ap.filter(path__iregex=text) # handler
 
     for ap in aps:
-        reg_exp = ap.path
-        pattern = re.compile(reg_exp)
-        match = pattern.match(text)
-
-        # try:
-        #     request_payload = json.loads(request.body.decode('utf-8'))
-        # except:
-        #     request_payload = {}
-
-        if match and ap.check_condition(request=request, url_path=extra_params):
+        if ap.is_valid and ap.check_condition(request=request, url_path=extra_params):
             return ap.process(request=request, url_path=extra_params)
-    # pattern = re.compile('^([0-9]+)+$')
-    #import ipdb; ipdb.set_trace()
-    #ap = aps[0]
     return JsonResponse({'message': 'No Access Point Found'})
 
 

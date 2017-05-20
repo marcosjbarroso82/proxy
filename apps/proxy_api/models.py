@@ -55,15 +55,79 @@ class RequestState(BaseModel):
     value = JSONField(null=True, blank=True, default=dict, help_text='jinja. Available vars: ')
 
 
-class AccessPointEnvironment(BaseModel, JinjaProcessorMixin):
+class ProxyApp(models.Model):
     name = models.CharField(max_length=20, unique=True)
     root_path = models.CharField(max_length=200, unique=True)
+
+
+class AccessPointEnvParamValue(models.Model):
+    key = models.ForeignKey('EnvInterfaceParameter')
+    value = models.CharField(max_length=100)
+    access_point = models.ForeignKey('AccessPoint', related_name='env_param_values')
+
+class EnvInterfaceParameter(models.Model):
+    type = models.CharField(max_length=20, choices=[('jinja', 'jinja'),])
+    required = models.BooleanField(default=False)
+    key = models.CharField(max_length=20)
+    env = models.ForeignKey('AccessPointEnvironment', related_name='interface_params')
+
+    def __str__(self):
+        return '%s-%s' %(self.env.name, self.key)
+
+class EnvVariable(models.Model):
+    type = models.CharField(max_length=20, choices=[('jinja', 'jinja'), ])
+    required = models.BooleanField(default=False) # Use it in check condition
+    key = models.CharField(max_length=20)
+    value = models.TextField()
+    env = models.ForeignKey('AccessPointEnvironment', related_name='variables')
+
+    def __str__(self):
+        return '%s-%s' % (self.env.name, self.key)
+
+
+class AccessPointEnvCondition(models.Model):
+    type = models.CharField(max_length=20, choices=(('reg_exp', 'reg_exp'), ('jinja', 'jinja')))
+    condition = models.TextField()
+    env = models.ForeignKey('AccessPointEnvironment', related_name='conditions')
+
+    def check_condition(self, env):
+        # TODO: Implement Jinja Condition
+        if self.type == 'reg_exp':
+            params = replace_jinga_tags(self.condition, {"env": env}).replace("\n", "") # TODO: Better sanitize
+            params = json.loads(params)
+            pattern = re.compile(params['re'])
+            match = pattern.match(params['text'])
+            if match:
+                return True
+
+        return False
+
+class AccessPointEnvironment(BaseModel, JinjaProcessorMixin):
+    name = models.CharField(max_length=20, unique=True)
     state_hash_id = models.CharField(max_length=50, null=True, blank=True,
                                      help_text='{{payload.entry.0.messaging.0.sender.id}}')
     value = JSONField(null=True, blank=True, default=dict)
 
+    def check_conditions(self):
+        for condition in self.conditions.all():
+            if not condition.check_condition(env=self.env):
+                return False
+        return True
+
+
     def get_value(self, **kwargs):
-        return replace_jinga_tags_in_dict(self.value, kwargs)
+        env = {}
+        for param in self.interface_params.all():
+            if param.required and param.key not in kwargs.keys():
+                raise Exception("Missing Env Required Param")
+            elif param.key in kwargs.keys():
+                env[param.key] = replace_jinga_tags(kwargs[param.key], kwargs)
+
+        for variable in self.variables.all():
+            env[variable.key] = replace_jinga_tags(variable.value, kwargs)
+
+        self.env = env
+        return self.env
 
     def __str__(self):
         return self.name
@@ -78,13 +142,24 @@ class BaseRequest(BaseModel, JinjaProcessorMixin):
 
 
 class AccessPoint(BaseRequest):
+    active = models.BooleanField(default=False)
+    app = models.ForeignKey(ProxyApp)
+    env = models.ForeignKey(AccessPointEnvironment)
     slug = models.CharField(max_length=500, null=False, blank=False)
     path = models.CharField(max_length=200,help_text='Ex: ".*"')
     state_condition = models.CharField(max_length=100, null=True, blank=True,
                                        help_text='state.counter >= 13 # avalidation that returns True')
 
-    env = models.ForeignKey(AccessPointEnvironment)
     response = JSONField(null=True, blank=True, default=dict)
+
+    @property
+    def is_valid(self):
+        # Check all Required Env params are being provided
+        if self.env:
+            params_key_ids = self.env_param_values.all().values_list('key__id', flat=True)
+            if self.env.interface_params.filter(required=True).exclude(id__in=params_key_ids):
+                return False
+        return True
 
     def __str__(self):
         return '%s' % str(self.name)
@@ -93,7 +168,6 @@ class AccessPoint(BaseRequest):
         return self.env.state_hash_id
 
     def get_state(self, params):
-        # TODO: this code is almost replicated
         hash = self.get_state_hash_id()
         if hash:
             template = Template(hash)
@@ -102,12 +176,14 @@ class AccessPoint(BaseRequest):
                 state = RequestState.objects.get(hash_id=state_hash_id)
             except RequestState.DoesNotExist:
                 state = None 
-            # state = RequestState.objects.filter(hash_id=state_hash_id).first()
             return state
         return None # TODO: None ???
 
     def get_env(self, **kwargs):
-        return self.env.get_value(**kwargs)
+        params = kwargs.copy()
+        for param in self.env_param_values.all():
+            params[param.key.key] = param.value
+        return self.env.get_value(**params)
 
     def check_condition(self, request, url_path):
         request_dict = {}
@@ -120,12 +196,19 @@ class AccessPoint(BaseRequest):
             request_payload = {}
         request_dict['payload'] = request_payload
 
+        env_params = {}
+        env_params['request_payload'] = request_payload
+
         state_params = {
             'request': request_dict,
             'env': self.get_env(request_payload=request_payload)
         }
-        state = self.get_state(params=state_params)
 
+        # Check Env Condition
+        if not self.env.check_conditions():
+            return False
+
+        state = self.get_state(params=state_params)
         if not self.state_condition:
             return True
         elif not state and self.state_condition:
@@ -212,10 +295,12 @@ class AccessPointRequestExecution(BaseRequestExecution):
         return JsonResponse(replace_jinga_tags_in_dict(self.request_definition.response, execute_params))
 
 
-
 def replace_jinga_tags(text, params):
-    env = Environment(extensions=['jinja2.ext.with_', 'jinja2.ext.do'])
-    return env.from_string(text).render(**params)
+    try:
+        env = Environment(extensions=['jinja2.ext.with_', 'jinja2.ext.do'])
+        return env.from_string(text).render(**params)
+    except:
+        import ipdb; ipdb.set_trace()
 
 
 def replace_jinga_tags_in_dict(payload, params):
@@ -229,7 +314,6 @@ class ReusableApiRequest(BaseRequest):
     payload = JSONField(null=True, blank=True, default=dict)
 
     def execute(self, access_point_request, params):
-        # TODO: Replicated code
         req_exec_params = {
             'request_definition': self,
             'access_point_request': access_point_request
@@ -241,7 +325,6 @@ class ReusableApiRequest(BaseRequest):
         return str(self.name)
 
 
-# TODO: Highly Replicated Code
 class ReusableApiRequestExecution(BaseRequestExecution):
     request_definition = models.ForeignKey(ReusableApiRequest, related_name='request_executions')
     access_point_request = models.ForeignKey(AccessPointRequestExecution, related_name='reusable_request_executions')
@@ -251,12 +334,17 @@ class ReusableApiRequestExecution(BaseRequestExecution):
         params = self.request_definition.execute_pre_request_operation(params)
         url = replace_jinga_tags(self.request_definition.url, params)
 
+        print("about to make a request")
+        print(url)
+        print(params)
         if self.request_definition.method == 'get':
             req = requests.get(url)
         elif self.request_definition.method == 'post':
             payload = replace_jinga_tags_in_dict(self.request_definition.payload, params)
             req = requests.post(url, json=payload)
         params['response'] = json.loads(req.content.decode('utf-8'))
+        print('response')
+        print(req.status_code)
         params = self.request_definition.execute_post_request_operation(params)
 
         return params
@@ -295,3 +383,18 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
             return True
         return False
 
+
+# class IncommingHttpHeader(models.Model):
+#     key = models.CharField(max_length=50, blank=True, null=True)
+#     value = models.CharField(max_length=300, blank=True, null=True)
+#     incomming_request = models.ForeignKey('GralRequestLog', related_name='headers')
+
+#
+# class IncommingRequest(BaseModel):
+#     url = models.CharField(max_length=300, null=True, blank=True)
+#     path = models.CharField(max_length=300, null=True, blank=True)
+#     method = models.CharField(max_length=10, null=True, blank=True)
+#     body = models.TextField()
+#     headers = models.TextField()
+#     response_headers = models.TextField()
+#     response_body = models.TextField()
