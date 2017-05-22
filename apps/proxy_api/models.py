@@ -3,7 +3,7 @@ from adminsortable.fields import SortableForeignKey
 from adminsortable.models import SortableMixin
 from .constants import REQUEST_METHODS
 # from django.shortcuts import HttpResponse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from jsonfield import JSONField
 from jinja2 import Template, Environment
 
@@ -59,6 +59,9 @@ class ProxyApp(models.Model):
     name = models.CharField(max_length=20, unique=True)
     root_path = models.CharField(max_length=200, unique=True)
 
+    def __str__(self):
+        return self.name
+
 
 class AccessPointEnvParamValue(models.Model):
     key = models.ForeignKey('EnvInterfaceParameter')
@@ -87,7 +90,7 @@ class EnvVariable(models.Model):
 
 class AccessPointEnvCondition(models.Model):
     type = models.CharField(max_length=20, choices=(('reg_exp', 'reg_exp'), ('jinja', 'jinja')))
-    condition = models.TextField()
+    condition = models.TextField(help_text='{"re": "{{ env.re_msg_cond }}", "text": "{{ env.received_message }}" }')
     env = models.ForeignKey('AccessPointEnvironment', related_name='conditions')
 
     def check_condition(self, env):
@@ -106,7 +109,6 @@ class AccessPointEnvironment(BaseModel, JinjaProcessorMixin):
     name = models.CharField(max_length=20, unique=True)
     state_hash_id = models.CharField(max_length=50, null=True, blank=True,
                                      help_text='{{payload.entry.0.messaging.0.sender.id}}')
-    value = JSONField(null=True, blank=True, default=dict)
 
     def check_conditions(self):
         for condition in self.conditions.all():
@@ -146,11 +148,12 @@ class AccessPoint(BaseRequest):
     app = models.ForeignKey(ProxyApp)
     env = models.ForeignKey(AccessPointEnvironment)
     slug = models.CharField(max_length=500, null=False, blank=False)
-    path = models.CharField(max_length=200,help_text='Ex: ".*"')
+    path = models.CharField(max_length=200,default='.*', help_text='Ex: ".*"')
     state_condition = models.CharField(max_length=100, null=True, blank=True,
                                        help_text='state.counter >= 13 # avalidation that returns True')
 
-    response = JSONField(null=True, blank=True, default=dict)
+    response_type = models.CharField(max_length=20, choices=(('text', 'text'), ('json', 'json')), default='text')
+    response = models.TextField(null=True, blank=True)
 
     @property
     def is_valid(self):
@@ -281,7 +284,11 @@ class AccessPointRequestExecution(BaseRequestExecution):
         return params
 
     def execute(self, execute_params):
-        execute_params['state'] = self.get_state(execute_params).value
+        try:
+            execute_params['state'] = self.get_state(execute_params).value
+        except:
+            # PATCH: if no state is tracked...
+            execute_params['state'] = {}
 
         # Execute Operations and requests
         execute_params = self.request_definition.env.execute_pre_request_operation(execute_params)
@@ -290,9 +297,15 @@ class AccessPointRequestExecution(BaseRequestExecution):
         execute_params = self.request_definition.execute_post_request_operation(execute_params)
         execute_params = self.request_definition.env.execute_post_request_operation(execute_params)
 
-        self.state.value = execute_params['state']
-        self.state.save()
-        return JsonResponse(replace_jinga_tags_in_dict(self.request_definition.response, execute_params))
+        # PATCH: Don't save state if none is tracked
+        if self.request_definition.get_state_hash_id():
+            self.state.value = execute_params['state']
+            self.state.save()
+
+        if self.request_definition.response_type == 'json':
+            return JsonResponse(replace_jinga_tags_in_dict(json.loads(self.request_definition.response), execute_params))
+        elif self.request_definition.response_type == 'text':
+            return HttpResponse(replace_jinga_tags(self.request_definition.response, execute_params))
 
 
 def replace_jinga_tags(text, params):

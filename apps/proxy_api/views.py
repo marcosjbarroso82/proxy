@@ -15,7 +15,10 @@ def proxy(request, root_path, slug=None, extra_params=None):
     # if request.method == 'GET':
     #     response = request.GET['hub.challenge']
     #     return HttpResponse(response)
-    payload = json.loads(request.body.decode('utf-8'))
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except:
+        payload = {}
 
 
     for ap in aps:
