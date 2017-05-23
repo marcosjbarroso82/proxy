@@ -1,6 +1,7 @@
 from django.contrib import admin
 from adminsortable.admin import NonSortableParentAdmin, SortableStackedInline, SortableTabularInline
 from . import models
+from django.core.urlresolvers import reverse
 
 
 from django.forms import Textarea
@@ -54,9 +55,21 @@ class AccessPointEnvironmentAdmin(admin.ModelAdmin):
 class BaseModelAdmin(admin.ModelAdmin):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
 
+class IncommingRequestAdmin(BaseModelAdmin):
+    list_display = ['pk', 'created_at']
+
+    readonly_fields = ('replay',)
+
+    def replay(self, obj):
+        # return 'asdf'
+        link = '<a href="%s">replay</a>'
+        return link % reverse('replay_request', kwargs={'request_pk':obj.pk})
+    replay.allow_tags = True
+
 
 admin.site.register(models.AccessPoint, AccessPointAdmin)
 admin.site.register(models.AccessPointEnvironment, AccessPointEnvironmentAdmin)
 admin.site.register(models.ReusableApiRequest, BaseModelAdmin)
 admin.site.register(models.AccessPointRequestExecution, BaseModelAdmin)
 admin.site.register(models.ProxyApp, BaseModelAdmin)
+admin.site.register(models.IncommingRequest, IncommingRequestAdmin)

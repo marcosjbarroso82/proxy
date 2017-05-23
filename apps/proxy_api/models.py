@@ -194,7 +194,7 @@ class AccessPoint(BaseRequest):
         request_dict['url_params'] = self.parse(request, url_path)
         request_dict['request_definition'] = self  # TODO: Try to remove
         try:
-            request_payload = json.loads(request.body.decode('utf-8'))
+            request_payload = request['body']
         except:
             request_payload = {}
         request_dict['payload'] = request_payload
@@ -230,7 +230,7 @@ class AccessPoint(BaseRequest):
         match = pattern.match(url_path)
         params = {
             'url_path_params': match.groupdict() if match else None,
-            'url_query_params': request.GET
+            'url_query_params': request['GET']
         }
         return params
 
@@ -239,10 +239,7 @@ class AccessPoint(BaseRequest):
         request_dict['path'] = url_path
         request_dict['url_params'] = self.parse(request, url_path)
         request_dict['request_definition'] = self # TODO: Try to remove
-        try:
-            request_payload = json.loads(request.body.decode('utf-8'))
-        except:
-            request_payload = {}
+        request_payload = request['body']
         request_dict['payload'] = request_payload
 
         execute_params = {
@@ -303,9 +300,9 @@ class AccessPointRequestExecution(BaseRequestExecution):
             self.state.save()
 
         if self.request_definition.response_type == 'json':
-            return JsonResponse(replace_jinga_tags_in_dict(json.loads(self.request_definition.response), execute_params))
+            return replace_jinga_tags_in_dict(json.loads(self.request_definition.response), execute_params)
         elif self.request_definition.response_type == 'text':
-            return HttpResponse(replace_jinga_tags(self.request_definition.response, execute_params))
+            return replace_jinga_tags(self.request_definition.response, execute_params)
 
 
 def replace_jinga_tags(text, params):
@@ -403,11 +400,63 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
 #     incomming_request = models.ForeignKey('GralRequestLog', related_name='headers')
 
 #
-# class IncommingRequest(BaseModel):
-#     url = models.CharField(max_length=300, null=True, blank=True)
-#     path = models.CharField(max_length=300, null=True, blank=True)
-#     method = models.CharField(max_length=10, null=True, blank=True)
-#     body = models.TextField()
-#     headers = models.TextField()
-#     response_headers = models.TextField()
-#     response_body = models.TextField()
+
+class IncommingRequest(BaseModel):
+    root_path = models.CharField(max_length=20, null=True, blank=True)
+    slug = models.CharField(max_length=20, null=True, blank=True)
+    extra_params = models.CharField(max_length=200, null=True, blank=True)
+    response_type = models.CharField(max_length=20, null=True, blank=True, choices=(('text', 'text'), ('json', 'json')))
+    response = models.TextField(null=True, blank=True)
+    request = JSONField(null=True)
+
+    def __str__(self):
+        return str(self.pk)
+
+    def parse(self, request, root_path, slug=None, extra_params=None):
+        try:
+            payload = json.loads(request.body.decode('utf-8'))
+        except:
+            raise
+            payload = {}
+
+        # TODO: Remove replicated data
+        req = {}
+        req['method'] = request.method
+        req['GET'] = dict(request.GET)
+        # req['POST'] = payload
+        req['body'] = payload
+        req['payload'] = payload
+        req['request_payload'] = payload
+
+        self.request = req
+
+        self.root_path = root_path
+        self.slug = slug
+
+        self.extra_params = extra_params
+
+
+    def process(self):
+        aps = AccessPoint.objects.filter(active=True, method=self.request['method'].lower(), slug=self.slug, app__root_path=self.root_path)
+
+        response = None
+        for ap in aps:
+            if ap.is_valid and ap.check_condition(request=self.request, url_path=self.extra_params):
+                response = ap.process(request=self.request, url_path=self.extra_params)
+
+        if not response:
+            response = {'message': 'No Access Point Found'}
+
+
+
+        if response.__class__ == dict:
+            self.response_type = 'json'
+            self.response = json.dumps(response)
+            self.save()
+            return JsonResponse(response)
+        else:
+            self.response_type = 'text'
+            self.response = response
+            self.save()
+            return HttpResponse(response)
+
