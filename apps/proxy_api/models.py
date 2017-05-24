@@ -89,7 +89,7 @@ class EnvVariable(models.Model):
 
 
 class AccessPointEnvCondition(models.Model):
-    type = models.CharField(max_length=20, choices=(('reg_exp', 'reg_exp'), ('jinja', 'jinja')))
+    type = models.CharField(max_length=20, choices=(('reg_exp', 'reg_exp'), ('jinja', 'jinja(no implementado)')))
     condition = models.TextField(help_text='{"re": "{{ env.re_msg_cond }}", "text": "{{ env.received_message }}" }')
     env = models.ForeignKey('AccessPointEnvironment', related_name='conditions')
 
@@ -161,6 +161,9 @@ class AccessPoint(BaseRequest):
         if self.env:
             params_key_ids = self.env_param_values.all().values_list('key__id', flat=True)
             if self.env.interface_params.filter(required=True).exclude(id__in=params_key_ids):
+                return False
+        for reusable_request in self.reusable_requests.all():
+            if not reusable_request.is_valid():
                 return False
         return True
 
@@ -362,8 +365,6 @@ class ReusableApiRequestExecution(BaseRequestExecution):
 
 class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
     condition = models.TextField(blank=True, default='')
-    # params = models.TextField(blank=True, default='')
-    params = JSONField(null=True, blank=True, default=dict)
     access_point = models.ForeignKey(AccessPoint, related_name='reusable_requests')
     request_definition = models.ForeignKey(ReusableApiRequest)
 
@@ -375,14 +376,18 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
 
     def execute(self, access_point_request, params):
         if self.check_condition(params):
-#            params['self_param'] = self.params
-            params['self_param'] = replace_jinga_tags_in_dict(self.params, params)
+            params['self_param'] = {}
+            for param in self.param_values.all():
+                params['self_param'][param.key.key] = replace_jinga_tags(param.value, params)
+
             params = self.execute_pre_request_operation(params)
             params = self.request_definition.execute(access_point_request, params)
             params = self.execute_post_request_operation(params)
         return params
 
     def check_condition(self, params):
+        if not self.is_valid():
+            return False
         if not self.condition:
             return True
         env = Environment()
@@ -393,13 +398,14 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
             return True
         return False
 
+    def is_valid(self):
+        # Check all Required Env params are being provided
+        if self.request_definition:
+            params_key_ids = self.param_values.all().values_list('key__id', flat=True)
+            if self.request_definition.interface_params.filter(required=True).exclude(id__in=params_key_ids):
+                return False
+        return True
 
-# class IncommingHttpHeader(models.Model):
-#     key = models.CharField(max_length=50, blank=True, null=True)
-#     value = models.CharField(max_length=300, blank=True, null=True)
-#     incomming_request = models.ForeignKey('GralRequestLog', related_name='headers')
-
-#
 
 class IncommingRequest(BaseModel):
     root_path = models.CharField(max_length=20, null=True, blank=True)
@@ -447,8 +453,6 @@ class IncommingRequest(BaseModel):
         if not response:
             response = {'message': 'No Access Point Found'}
 
-
-
         if response.__class__ == dict:
             self.response_type = 'json'
             self.response = json.dumps(response)
@@ -459,4 +463,21 @@ class IncommingRequest(BaseModel):
             self.response = response
             self.save()
             return HttpResponse(response)
+
+
+class RequestReusableInterfaceParameterValue(models.Model):
+    key = models.ForeignKey('RequestReusableInterfaceParameter')
+    value = models.CharField(max_length=100)
+    reusable_request = models.ForeignKey('AccessPointReusableRequest', related_name='param_values')
+
+
+class RequestReusableInterfaceParameter(models.Model):
+    type = models.CharField(max_length=20, choices=[('jinja', 'jinja'),])
+    required = models.BooleanField(default=False)
+    key = models.CharField(max_length=20)
+    env = models.ForeignKey('ReusableApiRequest', related_name='interface_params')
+
+    def __str__(self):
+        return '%s-%s' %(self.env.name, self.key)
+
 

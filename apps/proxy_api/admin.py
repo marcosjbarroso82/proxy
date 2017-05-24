@@ -2,7 +2,8 @@ from django.contrib import admin
 from adminsortable.admin import NonSortableParentAdmin, SortableStackedInline, SortableTabularInline
 from . import models
 from django.core.urlresolvers import reverse
-
+from django.contrib.contenttypes.models import ContentType
+from django.core import urlresolvers
 
 from django.forms import Textarea
 from django.db.models import TextField
@@ -25,6 +26,18 @@ class AccessPointReusableRequestInline(SortableTabularInline):
     model = models.AccessPointReusableRequest
     extra = 0
     exclude = ('log',)
+    readonly_fields = ('is_valid', 'edit')
+
+    def edit(self, obj):
+        if obj.pk:
+            content_type = ContentType.objects.get_for_model(obj.__class__)
+            admin_url = urlresolvers.reverse("admin:%s_%s_change" % (content_type.app_label, content_type.model),
+                                             args=(obj.pk,))
+            link = '<a href="%s" target="popup" >edit</a>'
+            # return link % reverse('replay_request', kwargs={'request_pk':obj.pk})
+            return link % admin_url
+        return ''
+    edit.allow_tags = True
 
 
 class AccessPointEnvParamValueInline(admin.TabularInline):
@@ -67,9 +80,26 @@ class IncommingRequestAdmin(BaseModelAdmin):
     replay.allow_tags = True
 
 
+class RequestReusableInterfaceParameterInline(admin.TabularInline):
+    model = models.RequestReusableInterfaceParameter
+    extra = 0
+
+
+class ReusableApiRequestAdmin(BaseModelAdmin):
+    inlines = [RequestReusableInterfaceParameterInline]
+
+
+class RequestReusableInterfaceParameterValueInline(admin.StackedInline):
+    model = models.RequestReusableInterfaceParameterValue
+    extra = 0
+
+class AccessPointReusableRequestAdmin(BaseModelAdmin):
+    inlines = [RequestReusableInterfaceParameterValueInline]
+
 admin.site.register(models.AccessPoint, AccessPointAdmin)
 admin.site.register(models.AccessPointEnvironment, AccessPointEnvironmentAdmin)
-admin.site.register(models.ReusableApiRequest, BaseModelAdmin)
+admin.site.register(models.ReusableApiRequest, ReusableApiRequestAdmin)
 admin.site.register(models.AccessPointRequestExecution, BaseModelAdmin)
 admin.site.register(models.ProxyApp, BaseModelAdmin)
+admin.site.register(models.AccessPointReusableRequest, AccessPointReusableRequestAdmin)
 admin.site.register(models.IncommingRequest, IncommingRequestAdmin)
