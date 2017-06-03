@@ -96,10 +96,19 @@ class RequestReusableInterfaceParameterValueInline(admin.StackedInline):
 class AccessPointReusableRequestAdmin(BaseModelAdmin):
     inlines = [RequestReusableInterfaceParameterValueInline]
 
+
+class AppVariableInline(admin.TabularInline):
+    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
+    model = models.AppVariable
+    extra = 0
+
+class ProxyAppAdmin(admin.ModelAdmin):
+    inlines = [AppVariableInline,]
+
 admin.site.register(models.AccessPoint, AccessPointAdmin)
 admin.site.register(models.AccessPointEnvironment, AccessPointEnvironmentAdmin)
 admin.site.register(models.ReusableApiRequest, ReusableApiRequestAdmin)
 admin.site.register(models.AccessPointRequestExecution, BaseModelAdmin)
-admin.site.register(models.ProxyApp, BaseModelAdmin)
+admin.site.register(models.ProxyApp, ProxyAppAdmin)
 admin.site.register(models.AccessPointReusableRequest, AccessPointReusableRequestAdmin)
 admin.site.register(models.IncommingRequest, IncommingRequestAdmin)
