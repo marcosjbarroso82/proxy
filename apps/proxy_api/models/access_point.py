@@ -1,12 +1,17 @@
 from django.db import models
-from .base import BaseRequest, BaseRequestExecution
-from .request import RequestState
+
+from .base import BaseRequest, BaseRequestExecution, BaseModel
 from .app import ProxyApp
 from ..utils import replace_jinga_tags_in_dict, replace_jinga_tags
 from jinja2 import Environment, Template
+from jsonfield import JSONField
 import re
 import json
 
+
+class RequestState(BaseModel):
+    hash_id = models.CharField(max_length=50)
+    value = JSONField(null=True, blank=True, default=dict, help_text='jinja. Available vars: ')
 
 class AccessPoint(BaseRequest):
     active = models.BooleanField(default=False)

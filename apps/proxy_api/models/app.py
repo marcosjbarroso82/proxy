@@ -1,11 +1,6 @@
 from django.db import models
-from .base import BaseModel, BaseVariable, JinjaProcessorMixin, BaseRequest, BaseRequestExecution
-from .request import RequestState
-from ..utils import replace_jinga_tags, replace_jinga_tags_in_dict
-from jinja2 import Template, Environment
-
-import re
-import json
+from .base import BaseModel, BaseVariable, JinjaProcessorMixin
+from ..utils import replace_jinga_tags
 
 
 class ProxyApp(models.Model):

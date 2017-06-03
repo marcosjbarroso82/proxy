@@ -2,7 +2,7 @@ from django.db import models
 from django.http import HttpResponse
 from django.http import JsonResponse
 
-from apps.proxy_api.models.app import AccessPoint
+from apps.proxy_api.models.access_point import AccessPoint
 from .base import BaseRequest, BaseRequestExecution, BaseModel, JinjaProcessorMixin
 from adminsortable.models import SortableMixin
 from jsonfield import JSONField
@@ -13,9 +13,6 @@ import requests
 from jinja2 import Environment
 
 
-class RequestState(BaseModel):
-    hash_id = models.CharField(max_length=50)
-    value = JSONField(null=True, blank=True, default=dict, help_text='jinja. Available vars: ')
 
 
 class ReusableApiRequest(BaseRequest):

@@ -1,6 +1,7 @@
 from .app import ProxyApp, AppVariable, AccessPointEnvironment, EnvInterfaceParameter, EnvVariable
+from .access_point import RequestState
 from .access_point import AccessPoint, AccessPointEnvCondition, AccessPointEnvParamValue, AccessPointRequestExecution
-from .request import RequestState, ReusableApiRequest, ReusableApiRequestExecution, AccessPointReusableRequest, IncommingRequest, \
+from .request import ReusableApiRequest, ReusableApiRequestExecution, AccessPointReusableRequest, IncommingRequest, \
     RequestReusableInterfaceParameterValue, RequestReusableInterfaceParameter
 
 
