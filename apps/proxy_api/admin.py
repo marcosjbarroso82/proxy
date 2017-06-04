@@ -8,6 +8,15 @@ from django.core import urlresolvers
 
 from django.forms import Textarea
 from django.db.models import TextField, CharField
+from .fields import JSONTextField
+
+class BaseModelAdmin(admin.ModelAdmin):
+    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
+
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        if isinstance(db_field, JSONTextField):
+            kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
+        return super(BaseModelAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
 
 class AccessPointEnvConditionInline(admin.StackedInline):
@@ -78,13 +87,12 @@ class EnvInterfaceParameterInline(admin.TabularInline):
     extra = 0
 
 
-class AccessPointEnvironmentAdmin(admin.ModelAdmin):
+class AccessPointEnvironmentAdmin(BaseModelAdmin):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     exclude = ('log',)
     inlines = [EnvVariableInline, EnvInterfaceParameterInline, AccessPointEnvConditionInline]
 
-class BaseModelAdmin(admin.ModelAdmin):
-    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
+
 
 class IncommingRequestAdmin(BaseModelAdmin):
     list_display = ['pk', 'created_at']
@@ -113,17 +121,18 @@ class RequestReusableInterfaceParameterValueInline(admin.StackedInline):
     model = models.RequestReusableInterfaceParameterValue
     extra = 0
 
+
 class AccessPointReusableRequestAdmin(BaseModelAdmin):
     inlines = [RequestReusableInterfaceParameterValueInline]
 
 
-class AppVariableInline(admin.TabularInline):
-    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
-    model = models.AppVariable
-    extra = 0
+class ProxyAppAdmin(BaseModelAdmin):
 
-class ProxyAppAdmin(admin.ModelAdmin):
-    inlines = [AppVariableInline,]
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        if isinstance(db_field, JSONTextField):
+            kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
+        return super(ProxyAppAdmin, self).formfield_for_dbfield(db_field, **kwargs)
+
 
 admin.site.register(models.AccessPoint, AccessPointAdmin)
 admin.site.register(models.AccessPointEnvironment, AccessPointEnvironmentAdmin)
