@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.poll',
 
     'adminsortable',
+    'json_editor',
 ]
 
 MIDDLEWARE = [

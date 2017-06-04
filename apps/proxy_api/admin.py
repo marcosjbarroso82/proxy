@@ -1,12 +1,13 @@
 from django.contrib import admin
 from adminsortable.admin import NonSortableParentAdmin, SortableStackedInline, SortableTabularInline
 from . import models
+from .widgets import ListTextWidget
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 from django.core import urlresolvers
 
 from django.forms import Textarea
-from django.db.models import TextField
+from django.db.models import TextField, CharField
 
 
 class AccessPointEnvConditionInline(admin.StackedInline):
@@ -25,8 +26,9 @@ class AccessPointReusableRequestInline(SortableTabularInline):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     model = models.AccessPointReusableRequest
     extra = 0
+    fields = ['request_definition', 'is_valid', 'edit', 'todo']
     exclude = ('log',)
-    readonly_fields = ('is_valid', 'edit')
+    readonly_fields = ('is_valid', 'edit', 'todo')
 
     def edit(self, obj):
         if obj.pk:
@@ -39,15 +41,31 @@ class AccessPointReusableRequestInline(SortableTabularInline):
         return ''
     edit.allow_tags = True
 
+    def todo(self, obj):
+        return 'mostrar las condiciones, inlines y readonly' \
+               '<br/>Dejar editable el request definition solo en el create'
+    todo.allow_tags = True
+
 
 class AccessPointEnvParamValueInline(admin.TabularInline):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     model = models.AccessPointEnvParamValue
     extra = 0
 
-
+from json_editor.admin import JSONEditorWidget
+import json
 class AccessPointAdmin(NonSortableParentAdmin):
-    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
+    # formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
+    # def formfield_for_dbfield(self, db_field, **kwargs):
+    #     if db_field.name == 'response':
+    #         schema_str = '{"title": "Person", "type": "object", "properties": { "name": { "type": "string", "description": "First and Last name", "default": "Jeremy Dorn" }}}'
+    #         schema = json.loads(schema_str)
+    #
+    #
+    #         kwargs['widget'] = JSONEditorWidget(schema=schema)
+    #     return super(AccessPointAdmin, self).formfield_for_dbfield(db_field, **kwargs)
+
+
     exclude = ('log',)
     readonly_fields = ['is_valid',]
 
@@ -87,6 +105,8 @@ class RequestReusableInterfaceParameterInline(admin.TabularInline):
 
 class ReusableApiRequestAdmin(BaseModelAdmin):
     inlines = [RequestReusableInterfaceParameterInline]
+    # self.fields['char_field_with_list'].widget = ListTextWidget(data_list=_country_list, name='country-list')
+    formfield_overrides = {CharField: {'widget': ListTextWidget(data_list=['aaa', 'bbb'], name='country-list') }, }
 
 
 class RequestReusableInterfaceParameterValueInline(admin.StackedInline):

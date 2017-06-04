@@ -1,15 +1,6 @@
 from django.db import models
-from adminsortable.fields import SortableForeignKey
-from adminsortable.models import SortableMixin
 from ..constants import REQUEST_METHODS
-# from django.shortcuts import HttpResponse
-from django.http import JsonResponse, HttpResponse
-from jsonfield import JSONField
-from jinja2 import Template, Environment
-
-import re
-import json
-import requests
+from ..utils import replace_jinga_tags
 
 
 class BaseModel(models.Model):

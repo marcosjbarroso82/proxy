@@ -100,6 +100,12 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
         return True
 
 
+class ReusableRequestPreAction(models.Model):
+    type = models.CharField(max_length=20, choices=(('set_var', 'set_var'),))
+    param1 = models.TextField(blank=True, null=True)
+    param2 = models.TextField(blank=True, null=True)
+
+
 class IncommingRequest(BaseModel):
     root_path = models.CharField(max_length=20, null=True, blank=True)
     slug = models.CharField(max_length=20, null=True, blank=True)
