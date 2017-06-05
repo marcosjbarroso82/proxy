@@ -26,12 +26,6 @@ class AccessPointEnvConditionInline(admin.StackedInline):
     extra = 0
 
 
-class EnvVariableInline(admin.TabularInline):
-    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
-    model = models.EnvVariable
-    extra = 0
-
-
 class AccessPointReusableRequestInline(SortableTabularInline):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     model = models.AccessPointReusableRequest
@@ -117,7 +111,7 @@ class AccessPointAdmin(NonSortableParentAdmin):
 class AccessPointEnvironmentAdmin(BaseModelAdmin):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     exclude = ('log',)
-    inlines = [EnvVariableInline, AccessPointEnvConditionInline]
+    inlines = [AccessPointEnvConditionInline,]
 
 
 class IncommingRequestAdmin(BaseModelAdmin):

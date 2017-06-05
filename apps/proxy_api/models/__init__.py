@@ -1,4 +1,4 @@
-from .app import ProxyApp, AccessPointEnvironment, EnvVariable
+from .app import ProxyApp, AccessPointEnvironment
 from .access_point import RequestState
 from .access_point import AccessPoint, AccessPointEnvCondition, AccessPointRequestExecution
 from .request import ReusableApiRequest, ReusableApiRequestExecution, AccessPointReusableRequest, IncommingRequest, \
@@ -6,7 +6,7 @@ from .request import ReusableApiRequest, ReusableApiRequestExecution, AccessPoin
 
 
 __all__ = ['RequestState', 'ProxyApp',
-           'EnvVariable', 'AccessPointEnvCondition', 'AccessPointEnvironment', 'AccessPoint',
+           'AccessPointEnvCondition', 'AccessPointEnvironment', 'AccessPoint',
            'AccessPointRequestExecution','ReusableApiRequest', 'ReusableApiRequestExecution',
            'AccessPointReusableRequest', 'IncommingRequest', 'RequestReusableInterfaceParameterValue',
            'RequestReusableInterfaceParameter']
