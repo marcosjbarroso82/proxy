@@ -137,11 +137,6 @@ class ReusableApiRequestAdmin(BaseModelAdmin):
     formfield_overrides = {CharField: {'widget': ListTextWidget(data_list=['aaa', 'bbb'], name='country-list') }, }
 
 
-class RequestReusableInterfaceParameterValueInline(admin.StackedInline):
-    model = models.RequestReusableInterfaceParameterValue
-    extra = 0
-
-
 class AccessPointReusableRequestForm(forms.ModelForm):
     class Meta(object):
         model = models.AccessPointReusableRequest
@@ -161,7 +156,6 @@ class AccessPointReusableRequestForm(forms.ModelForm):
             schema['items']['properties']['key']['enum'] = keys
 
 class AccessPointReusableRequestAdmin(BaseModelAdmin):
-    inlines = [RequestReusableInterfaceParameterValueInline]
     form = AccessPointReusableRequestForm
 
 

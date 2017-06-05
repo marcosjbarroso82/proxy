@@ -120,9 +120,6 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
                             break
                     if not found:
                         return False
-            # params_key_ids = self.param_values.all().values_list('key__id', flat=True)
-            # if self.request_definition.interface_params.filter(required=True).exclude(id__in=params_key_ids):
-            #     return False
         return True
 
 
@@ -187,12 +184,6 @@ class IncommingRequest(BaseModel):
             self.response = response
             self.save()
             return HttpResponse(response)
-
-
-class RequestReusableInterfaceParameterValue(models.Model):
-    key = models.ForeignKey('RequestReusableInterfaceParameter')
-    value = models.CharField(max_length=100)
-    reusable_request = models.ForeignKey('AccessPointReusableRequest', related_name='param_values')
 
 
 class RequestReusableInterfaceParameter(models.Model):
