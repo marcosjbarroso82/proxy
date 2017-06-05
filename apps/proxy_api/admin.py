@@ -126,13 +126,7 @@ class IncommingRequestAdmin(BaseModelAdmin):
     replay.allow_tags = True
 
 
-class RequestReusableInterfaceParameterInline(admin.TabularInline):
-    model = models.RequestReusableInterfaceParameter
-    extra = 0
-
-
 class ReusableApiRequestAdmin(BaseModelAdmin):
-    inlines = [RequestReusableInterfaceParameterInline]
     # self.fields['char_field_with_list'].widget = ListTextWidget(data_list=_country_list, name='country-list')
     formfield_overrides = {CharField: {'widget': ListTextWidget(data_list=['aaa', 'bbb'], name='country-list') }, }
 

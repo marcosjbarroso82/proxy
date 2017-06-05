@@ -186,11 +186,3 @@ class IncommingRequest(BaseModel):
             return HttpResponse(response)
 
 
-class RequestReusableInterfaceParameter(models.Model):
-    type = models.CharField(max_length=20, choices=[('jinja', 'jinja')])
-    required = models.BooleanField(default=False)
-    key = models.CharField(max_length=20)
-    env = models.ForeignKey('ReusableApiRequest', related_name='interface_params')
-
-    def __str__(self):
-        return '%s-%s' %(self.env.name, self.key)
