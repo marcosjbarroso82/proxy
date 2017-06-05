@@ -13,6 +13,7 @@ from .fields import JSONTextField
 class BaseModelAdmin(admin.ModelAdmin):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
 
+    # TODO: Meter esto en un Mixin
     def formfield_for_dbfield(self, db_field, **kwargs):
         if isinstance(db_field, JSONTextField):
             kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
@@ -63,7 +64,33 @@ class AccessPointEnvParamValueInline(admin.TabularInline):
 
 from json_editor.admin import JSONEditorWidget
 import json
+from django import forms
+from .constants import JSON_KEY_VALUE_SCHEMA
+
+class AccessPointModelForm(forms.ModelForm):
+    class Meta(object):
+        model = models.AccessPoint
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super(AccessPointModelForm, self).__init__(*args, **kwargs)
+
+        self.fields['json_env_params'].widget = JSONEditorWidget(schema=JSON_KEY_VALUE_SCHEMA)
+
+        if self.instance.env and self.instance.env.interface:
+            interface = json.loads(self.instance.env.interface)
+            keys = []
+            schema = JSON_KEY_VALUE_SCHEMA
+            for param in interface:
+                keys.append(param.get('key'))
+            schema['items']['properties']['key']['enum'] = keys
+
+
 class AccessPointAdmin(NonSortableParentAdmin):
+    # def __init__(self, *args, **kwargs):
+    #     import ipdb; ipdb.set_trace()
+    #     return super(AccessPointAdmin, self).__init__(*args, **kwargs)
+
     # formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     # def formfield_for_dbfield(self, db_field, **kwargs):
     #     if db_field.name == 'response':
@@ -74,6 +101,16 @@ class AccessPointAdmin(NonSortableParentAdmin):
     #         kwargs['widget'] = JSONEditorWidget(schema=schema)
     #     return super(AccessPointAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
+    # TODO: Meter esto en un Mixin
+    # def formfield_for_dbfield(self, db_field, **kwargs):
+    #     if isinstance(db_field, JSONTextField):
+    #         kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
+    #
+    #         import ipdb; ipdb.set_trace()
+    #
+    #     return super(AccessPointAdmin, self).formfield_for_dbfield(db_field, **kwargs)
+
+    form = AccessPointModelForm
 
     exclude = ('log',)
     readonly_fields = ['is_valid',]

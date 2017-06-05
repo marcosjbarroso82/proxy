@@ -7,11 +7,14 @@ from jinja2 import Environment, Template
 from jsonfield import JSONField
 import re
 import json
+from ..constants import JSON_KEY_VALUE_SCHEMA
+from ..fields import JSONTextField
 
 
 class RequestState(BaseModel):
     hash_id = models.CharField(max_length=50)
     value = JSONField(null=True, blank=True, default=dict, help_text='jinja. Available vars: ')
+
 
 class AccessPoint(BaseRequest):
     active = models.BooleanField(default=False)
@@ -21,17 +24,33 @@ class AccessPoint(BaseRequest):
     path = models.CharField(max_length=200, default='.*', help_text='Ex: ".*"')
     state_condition = models.CharField(max_length=100, null=True, blank=True,
                                        help_text='state.counter >= 13 # avalidation that returns True')
-
     response_type = models.CharField(max_length=20, choices=(('text', 'text'), ('json', 'json')), default='text')
     response = models.TextField(null=True, blank=True)
+    json_env_params = JSONTextField(null=True, blank=True, json_schema=JSON_KEY_VALUE_SCHEMA,
+                                  help_text='TODO: Make key and value required')
 
     @property
     def is_valid(self):
         # Check all Required Env params are being provided
-        if self.env:
-            params_key_ids = self.env_param_values.all().values_list('key__id', flat=True)
-            if self.env.interface_params.filter(required=True).exclude(id__in=params_key_ids):
-                return False
+        if self.env and self.env.interface:
+            try:
+                param_values = json.loads(self.json_env_params)
+            except:
+                param_values = []
+            env_interface = json.loads(self.env.interface)
+            for param in env_interface:
+                # param = env_interface[0]
+                if param.get('required'):
+                    found_required_param = False
+                    for value in param_values:
+                        value = param_values[0]
+                        if value.get('key') == param.get('key'):
+                            if value.get('value'):
+                                found_required_param = True
+                                break
+                    if not found_required_param:
+                        return False
+
         for reusable_request in self.reusable_requests.all():
             if not reusable_request.is_valid():
                 return False
@@ -57,8 +76,11 @@ class AccessPoint(BaseRequest):
 
     def get_env(self, **kwargs):
         params = kwargs.copy()
-        for param in self.env_param_values.all():
-            params[param.key.key] = param.value
+
+        env_param_value = json.loads(self.json_env_params)
+        for param in env_param_value:
+            params[param.get('key')] = param.get('value') if not self.app.debug else param.get('debug_value')
+
         return self.env.get_value(**params)
 
     def check_condition(self, request, url_path):
