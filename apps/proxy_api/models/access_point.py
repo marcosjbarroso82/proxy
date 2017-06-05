@@ -166,12 +166,6 @@ class AccessPointEnvCondition(models.Model):
         return False
 
 
-class AccessPointEnvParamValue(models.Model):
-    key = models.ForeignKey('EnvInterfaceParameter')
-    value = models.CharField(max_length=100)
-    access_point = models.ForeignKey('AccessPoint', related_name='env_param_values')
-
-
 class AccessPointRequestExecution(BaseRequestExecution):
     request_definition = models.ForeignKey(AccessPoint)
     state = models.ForeignKey(RequestState, null=True)

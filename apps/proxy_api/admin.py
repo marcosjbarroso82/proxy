@@ -57,10 +57,6 @@ class AccessPointReusableRequestInline(SortableTabularInline):
     todo.allow_tags = True
 
 
-class AccessPointEnvParamValueInline(admin.TabularInline):
-    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
-    model = models.AccessPointEnvParamValue
-    extra = 0
 
 from json_editor.admin import JSONEditorWidget
 import json
@@ -115,20 +111,13 @@ class AccessPointAdmin(NonSortableParentAdmin):
     exclude = ('log',)
     readonly_fields = ['is_valid',]
 
-    inlines = [AccessPointEnvParamValueInline, AccessPointReusableRequestInline]
-
-
-class EnvInterfaceParameterInline(admin.TabularInline):
-    formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
-    model = models.EnvInterfaceParameter
-    extra = 0
+    inlines = [AccessPointReusableRequestInline,]
 
 
 class AccessPointEnvironmentAdmin(BaseModelAdmin):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     exclude = ('log',)
-    inlines = [EnvVariableInline, EnvInterfaceParameterInline, AccessPointEnvConditionInline]
-
+    inlines = [EnvVariableInline, AccessPointEnvConditionInline]
 
 
 class IncommingRequestAdmin(BaseModelAdmin):
