@@ -51,10 +51,8 @@ class ReusableApiRequestExecution(BaseRequestExecution):
         elif self.request_definition.method == 'post':
             payload = replace_jinga_tags_in_dict(json.loads(self.request_definition.payload), params)
             req = requests.post(url, json=payload)
-        try:
-            params['response'] = json.loads(req.content.decode('utf-8'))
-        except:
-            import ipdb; ipdb.set_trace()
+        # TODO: implement rest of request methods
+        params['response'] = json.loads(req.content.decode('utf-8'))
         print('response')
         print(req.status_code)
         params = self.request_definition.execute_post_request_operation(params)

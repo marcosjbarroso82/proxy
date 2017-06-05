@@ -3,12 +3,8 @@ import json
 
 
 def replace_jinga_tags(text, params):
-    try:
-        env = Environment(extensions=['jinja2.ext.with_', 'jinja2.ext.do'])
-        return env.from_string(text).render(**params)
-    except:
-        import ipdb; ipdb.set_trace()
-
+    env = Environment(extensions=['jinja2.ext.with_', 'jinja2.ext.do'])
+    return env.from_string(text).render(**params)
 
 def replace_jinga_tags_in_dict(payload, params):
     text = json.dumps(payload)

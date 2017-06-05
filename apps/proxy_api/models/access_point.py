@@ -78,8 +78,6 @@ class AccessPoint(BaseRequest):
         params = kwargs.copy()
 
         env_param_value = json.loads(self.json_env_params)
-        # param = env_param_value[0]
-        # import ipdb; ipdb.set_trace()
         for param in env_param_value:
             if self.app.debug and param.get('debug_value'):
                 value = param.get('debug_value')
