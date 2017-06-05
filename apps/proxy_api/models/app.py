@@ -15,8 +15,13 @@ class ProxyApp(models.Model):
 
     def get_variables(self):
         temp_var = dict()
-        for varialbe in self.app_variables:
-            temp_var[varialbe['key']] = varialbe['value'] if not self.debug else varialbe['debug_value']
+        app_variables = json.loads(self.app_variables)
+        for varialbe in app_variables:
+            if self.debug and varialbe.get('debug_value'):
+                value = varialbe.get('debug_value')
+            else:
+                value = variable.get('value')
+            temp_var[varialbe['key']] = value
         return temp_var
 
     def __str__(self):

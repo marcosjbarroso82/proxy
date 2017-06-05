@@ -16,6 +16,7 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 from django.conf.urls import include, url
+from apps.poll.views import Vote
 
 from rest_framework.routers import DefaultRouter
 
@@ -27,13 +28,14 @@ router = DefaultRouter()
 router.register(r'polls', PollModelViewSet, base_name='polls')
 
 
+
 urlpatterns = [
     url(r'^api/v1/', include(router.urls)),
-    url(r'^proxy/', include('apps.proxy_api.urls')),
     url(r'^poll/', include('apps.poll.urls')),
+    url(r'^proxy/', include('apps.proxy_api.urls')),
+
 
 
 
     url(r'^admin/', admin.site.urls),
 ]
-

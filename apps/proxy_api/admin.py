@@ -65,20 +65,19 @@ class AccessPointModelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(AccessPointModelForm, self).__init__(*args, **kwargs)
 
-        self.fields['json_env_params'].widget = JSONEditorWidget(schema=JSON_KEY_VALUE_SCHEMA)
-
+        schema = JSON_KEY_VALUE_SCHEMA.copy()
         if self.instance.env and self.instance.env.interface:
             interface = json.loads(self.instance.env.interface)
             keys = []
-            schema = JSON_KEY_VALUE_SCHEMA
+
             for param in interface:
                 keys.append(param.get('key'))
             schema['items']['properties']['key']['enum'] = keys
-
+        self.fields['json_env_params'].widget = JSONEditorWidget(schema=schema)
+        # TODO: revisar esto
 
 class AccessPointAdmin(NonSortableParentAdmin):
     # def __init__(self, *args, **kwargs):
-    #     import ipdb; ipdb.set_trace()
     #     return super(AccessPointAdmin, self).__init__(*args, **kwargs)
 
     # formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
@@ -96,7 +95,6 @@ class AccessPointAdmin(NonSortableParentAdmin):
     #     if isinstance(db_field, JSONTextField):
     #         kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
     #
-    #         import ipdb; ipdb.set_trace()
     #
     #     return super(AccessPointAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
@@ -139,15 +137,15 @@ class AccessPointReusableRequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(AccessPointReusableRequestForm, self).__init__(*args, **kwargs)
 
-        self.fields['json_request_params'].widget = JSONEditorWidget(schema=JSON_KEY_VALUE_SCHEMA)
-
+        schema = JSON_KEY_VALUE_SCHEMA.copy()
         if self.instance.request_definition and self.instance.request_definition.interface:
             interface = json.loads(self.instance.request_definition.interface)
             keys = []
-            schema = JSON_KEY_VALUE_SCHEMA
+
             for param in interface:
                 keys.append(param.get('key'))
             schema['items']['properties']['key']['enum'] = keys
+        self.fields['json_request_params'].widget = JSONEditorWidget(schema=schema)
 
 class AccessPointReusableRequestAdmin(BaseModelAdmin):
     form = AccessPointReusableRequestForm

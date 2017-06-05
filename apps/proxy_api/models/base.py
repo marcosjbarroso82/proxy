@@ -5,10 +5,10 @@ from ..utils import replace_jinga_tags
 
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    log = models.TextField(null=True, blank=True, default='')
+    # log = models.TextField(null=True, blank=True, default='')
 
-    def logger(self, data):
-        self.log += '%s: %s %s' % (str(self.__class__.__name__), data, '<br/>')
+    # def logger(self, data):
+    #     self.log += '%s: %s %s' % (str(self.__class__.__name__), data, '<br/>')
 
     class Meta:
         abstract = True

@@ -43,6 +43,8 @@ INSTALLED_APPS = [
 
     'adminsortable',
     'json_editor',
+
+    'rest_framework'
 ]
 
 MIDDLEWARE = [

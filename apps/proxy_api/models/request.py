@@ -19,7 +19,8 @@ class ReusableApiRequest(BaseRequest):
     url = models.CharField(max_length=500)
     interface = JSONTextField(null=True, blank=True, json_schema=JSON_INTERFACE_SCHEMA,
                               help_text='TODO: Make key and value required')
-    payload = JSONField(null=True, blank=True, default=dict)
+    # payload = JSONField(null=True, blank=True, default=dict)
+    payload = JSONTextField(null=True, blank=True, json_schema={})
 
     def execute(self, access_point_request, params):
         req_exec_params = {
@@ -48,9 +49,12 @@ class ReusableApiRequestExecution(BaseRequestExecution):
         if self.request_definition.method == 'get':
             req = requests.get(url)
         elif self.request_definition.method == 'post':
-            payload = replace_jinga_tags_in_dict(self.request_definition.payload, params)
+            payload = replace_jinga_tags_in_dict(json.loads(self.request_definition.payload), params)
             req = requests.post(url, json=payload)
-        params['response'] = json.loads(req.content.decode('utf-8'))
+        try:
+            params['response'] = json.loads(req.content.decode('utf-8'))
+        except:
+            import ipdb; ipdb.set_trace()
         print('response')
         print(req.status_code)
         params = self.request_definition.execute_post_request_operation(params)

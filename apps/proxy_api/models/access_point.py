@@ -23,7 +23,7 @@ class AccessPoint(BaseRequest):
     slug = models.CharField(max_length=500, null=False, blank=False)
     path = models.CharField(max_length=200, default='.*', help_text='Ex: ".*"')
     state_condition = models.CharField(max_length=100, null=True, blank=True,
-                                       help_text='state.counter >= 13 # avalidation that returns True')
+                                       help_text='"aa"=="aa";\n convertir vacio en universal; state.counter >= 13 # avalidation that returns True')
     response_type = models.CharField(max_length=20, choices=(('text', 'text'), ('json', 'json')), default='text')
     response = models.TextField(null=True, blank=True)
     json_env_params = JSONTextField(null=True, blank=True, json_schema=JSON_KEY_VALUE_SCHEMA,
@@ -78,8 +78,14 @@ class AccessPoint(BaseRequest):
         params = kwargs.copy()
 
         env_param_value = json.loads(self.json_env_params)
+        # param = env_param_value[0]
+        # import ipdb; ipdb.set_trace()
         for param in env_param_value:
-            params[param.get('key')] = param.get('value') if not self.app.debug else param.get('debug_value')
+            if self.app.debug and param.get('debug_value'):
+                value = param.get('debug_value')
+            else:
+                value = param.get('value')
+            params[param.get('key')] = value
 
         return self.env.get_value(**params)
 
@@ -99,7 +105,8 @@ class AccessPoint(BaseRequest):
 
         state_params = {
             'request': request_dict,
-            'env': self.get_env(request_payload=request_payload)
+            'env': self.get_env(request_payload=request_payload),
+            'app': self.app.get_variables()
         }
 
         # Check Env Condition
@@ -108,14 +115,13 @@ class AccessPoint(BaseRequest):
 
         state = self.get_state(params=state_params)
         if not self.state_condition:
-            return True
+            return False
         elif not state and self.state_condition:
             return False
         else:
             env = Environment()
             expr = env.compile_expression(self.state_condition)
             result = expr(state=state.value)
-
             if result:
                 return True
         return False
@@ -140,7 +146,8 @@ class AccessPoint(BaseRequest):
         execute_params = {
             'request': request_dict,
             'context': {},
-            'env': self.get_env(request_payload=request_payload)
+            'env': self.get_env(request_payload=request_payload),
+            'app': self.app.get_variables()
         }
         ap_request = AccessPointRequestExecution.objects.create(request_definition=self)
         ap_request.save()
