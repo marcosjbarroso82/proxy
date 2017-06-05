@@ -6,6 +6,8 @@ from apps.proxy_api.models.access_point import AccessPoint
 from .base import BaseRequest, BaseRequestExecution, BaseModel, JinjaProcessorMixin
 from adminsortable.models import SortableMixin
 from jsonfield import JSONField
+from ..fields import JSONTextField
+from ..constants import JSON_INTERFACE_SCHEMA, JSON_KEY_VALUE_SCHEMA
 
 from ..utils import replace_jinga_tags, replace_jinga_tags_in_dict
 import json
@@ -13,10 +15,10 @@ import requests
 from jinja2 import Environment
 
 
-
-
 class ReusableApiRequest(BaseRequest):
     url = models.CharField(max_length=500)
+    interface = JSONTextField(null=True, blank=True, json_schema=JSON_INTERFACE_SCHEMA,
+                              help_text='TODO: Make key and value required')
     payload = JSONField(null=True, blank=True, default=dict)
 
     def execute(self, access_point_request, params):
@@ -60,6 +62,8 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
     condition = models.TextField(blank=True, default='')
     access_point = models.ForeignKey('AccessPoint', related_name='reusable_requests')
     request_definition = models.ForeignKey(ReusableApiRequest)
+    json_request_params = JSONTextField(null=True, blank=True, json_schema=JSON_KEY_VALUE_SCHEMA,
+                                    help_text='TODO: Make key and value required')
 
     # ordering field
     access_point_order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
@@ -70,8 +74,12 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
     def execute(self, access_point_request, params):
         if self.check_condition(params):
             params['self_param'] = {}
-            for param in self.param_values.all():
-                params['self_param'][param.key.key] = replace_jinga_tags(param.value, params)
+            if self.json_request_params:
+                params_values = json.loads(self.json_request_params)
+            else:
+                params_values = []
+            for param in params_values:
+                params['self_param'][param.get('key')] = replace_jinga_tags(param.get('value'), params)  # TODO: get debug value also
 
             params = self.execute_pre_request_operation(params)
             params = self.request_definition.execute(access_point_request, params)
@@ -92,11 +100,29 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
         return False
 
     def is_valid(self):
-        # Check all Required Env params are being provided
+        # Check all Required params are being provided
         if self.request_definition:
-            params_key_ids = self.param_values.all().values_list('key__id', flat=True)
-            if self.request_definition.interface_params.filter(required=True).exclude(id__in=params_key_ids):
-                return False
+            if self.request_definition.interface:
+                interface = json.loads(self.request_definition.interface)
+            else:
+                interface = []
+
+            for param in interface:
+                if param.get('required'):
+                    found = False
+                    if self.json_request_params:
+                        params_values = json.loads(self.json_request_params)
+                    else:
+                        params_values = []
+                    for value in params_values:
+                        if value.get('key') == param.get('key') and value.get('value'):  # TODO: get debug value also
+                            found = True
+                            break
+                    if not found:
+                        return False
+            # params_key_ids = self.param_values.all().values_list('key__id', flat=True)
+            # if self.request_definition.interface_params.filter(required=True).exclude(id__in=params_key_ids):
+            #     return False
         return True
 
 

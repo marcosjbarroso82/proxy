@@ -142,8 +142,27 @@ class RequestReusableInterfaceParameterValueInline(admin.StackedInline):
     extra = 0
 
 
+class AccessPointReusableRequestForm(forms.ModelForm):
+    class Meta(object):
+        model = models.AccessPointReusableRequest
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super(AccessPointReusableRequestForm, self).__init__(*args, **kwargs)
+
+        self.fields['json_request_params'].widget = JSONEditorWidget(schema=JSON_KEY_VALUE_SCHEMA)
+
+        if self.instance.request_definition and self.instance.request_definition.interface:
+            interface = json.loads(self.instance.request_definition.interface)
+            keys = []
+            schema = JSON_KEY_VALUE_SCHEMA
+            for param in interface:
+                keys.append(param.get('key'))
+            schema['items']['properties']['key']['enum'] = keys
+
 class AccessPointReusableRequestAdmin(BaseModelAdmin):
     inlines = [RequestReusableInterfaceParameterValueInline]
+    form = AccessPointReusableRequestForm
 
 
 class ProxyAppAdmin(BaseModelAdmin):
