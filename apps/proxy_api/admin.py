@@ -10,6 +10,12 @@ from django.forms import Textarea
 from django.db.models import TextField, CharField
 from .fields import JSONTextField
 
+from json_editor.admin import JSONEditorWidget
+import json
+from django import forms
+from .constants import JSON_KEY_VALUE_SCHEMA
+
+
 class BaseModelAdmin(admin.ModelAdmin):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
 
@@ -24,6 +30,31 @@ class AccessPointEnvConditionInline(admin.StackedInline):
     formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
     model = models.AccessPointEnvCondition
     extra = 0
+
+
+class AccessPointActionModelForm(forms.ModelForm):
+    class Meta(object):
+        model = models.AccessPointAction
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super(AccessPointActionModelForm, self).__init__(*args, **kwargs)
+
+        if self.instance.type:
+            self.fields['params'].widget = JSONEditorWidget(schema=self.instance.get_params_json_schema())
+
+
+class AccessPointActionInline(admin.StackedInline):
+# class AccessPointActionInline(SortableTabularInline):
+    model = models.AccessPointAction
+    form = AccessPointActionModelForm
+    extra = 0
+    exclude = ('log',)
+
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        if isinstance(db_field, JSONTextField):
+            kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
+        return super(AccessPointActionInline, self).formfield_for_dbfield(db_field, **kwargs)
 
 
 class AccessPointReusableRequestInline(SortableTabularInline):
@@ -51,12 +82,6 @@ class AccessPointReusableRequestInline(SortableTabularInline):
     todo.allow_tags = True
 
 
-
-from json_editor.admin import JSONEditorWidget
-import json
-from django import forms
-from .constants import JSON_KEY_VALUE_SCHEMA
-
 class AccessPointModelForm(forms.ModelForm):
     class Meta(object):
         model = models.AccessPoint
@@ -76,34 +101,12 @@ class AccessPointModelForm(forms.ModelForm):
         self.fields['json_env_params'].widget = JSONEditorWidget(schema=schema)
         # TODO: revisar esto
 
+
 class AccessPointAdmin(NonSortableParentAdmin):
-    # def __init__(self, *args, **kwargs):
-    #     return super(AccessPointAdmin, self).__init__(*args, **kwargs)
-
-    # formfield_overrides = {TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 40})}, }
-    # def formfield_for_dbfield(self, db_field, **kwargs):
-    #     if db_field.name == 'response':
-    #         schema_str = '{"title": "Person", "type": "object", "properties": { "name": { "type": "string", "description": "First and Last name", "default": "Jeremy Dorn" }}}'
-    #         schema = json.loads(schema_str)
-    #
-    #
-    #         kwargs['widget'] = JSONEditorWidget(schema=schema)
-    #     return super(AccessPointAdmin, self).formfield_for_dbfield(db_field, **kwargs)
-
-    # TODO: Meter esto en un Mixin
-    # def formfield_for_dbfield(self, db_field, **kwargs):
-    #     if isinstance(db_field, JSONTextField):
-    #         kwargs['widget'] = JSONEditorWidget(schema=db_field.json_schema)
-    #
-    #
-    #     return super(AccessPointAdmin, self).formfield_for_dbfield(db_field, **kwargs)
-
     form = AccessPointModelForm
-
     exclude = ('log',)
     readonly_fields = ['is_valid',]
-
-    inlines = [AccessPointReusableRequestInline,]
+    inlines = [AccessPointReusableRequestInline, AccessPointActionInline]
 
 
 class AccessPointEnvironmentAdmin(BaseModelAdmin):

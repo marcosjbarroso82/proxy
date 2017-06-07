@@ -1,0 +1,25 @@
+{% load replace_dash_for_underscore %}
+<div id="{{ name }}_editor"></div>
+
+<script>
+    var container = document.getElementById("{{ name }}_editor");
+    var options = {
+        theme: 'bootstrap3',
+        iconlib: "fontawesome4",
+        schema: {{ schema|safe }}
+    };
+    var {{ name|replace_dash_for_underscore }}_editor = new JSONEditor(container, options);
+    {{ name|replace_dash_for_underscore }}_editor.on('change', function () {
+      var json = {{ name|replace_dash_for_underscore }}_editor.getValue();
+      document.getElementById("id_{{ name }}").value = JSON.stringify(json);
+    });
+    {% if data %}
+    var json = {{ data|safe }};
+    {{ name|replace_dash_for_underscore }}_editor.setValue(json);
+    {% endif %}
+</script>
+
+<textarea cols="40" id="id_{{ name }}" name="{{ name }}" rows="10" required="" style="display: none">{{ data|safe }}</textarea>
+
+{#<textarea cols="40" id="id_actions_0_params" name="actions_0_params" rows="10" required="" style="display: none"></textarea>#}
+{#<textarea name="actions-0-params" cols="40" rows="10" class="vLargeTextField" id="id_actions-0-params"></textarea>#}

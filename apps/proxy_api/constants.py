@@ -76,3 +76,21 @@ JSON_INTERFACE_SCHEMA = {
         }
     }
 }
+
+JSON_OBJ_KEY_VALUE_SCHEMA = {
+    "type": "object",
+    "format": "grid",
+        "properties": {
+            "key": {
+                "type": "string", "propertyOrder": 1, "required": True
+            },
+            "value": {
+                "type": "string", "propertyOrder": 2, "required": True
+            },
+            "debug_value": {
+                "type": "string", "propertyOrder": 3, "required": True
+            }
+        },
+    "required": ["key", "value", "debug_value"],
+    "defaultProperties": ["key", "value", "debug_value"]
+    }

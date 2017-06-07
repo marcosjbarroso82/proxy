@@ -7,7 +7,7 @@ from .base import BaseRequest, BaseRequestExecution, BaseModel, JinjaProcessorMi
 from adminsortable.models import SortableMixin
 from jsonfield import JSONField
 from ..fields import JSONTextField
-from ..constants import JSON_INTERFACE_SCHEMA, JSON_KEY_VALUE_SCHEMA
+from ..constants import JSON_INTERFACE_SCHEMA, JSON_KEY_VALUE_SCHEMA, JSON_OBJ_KEY_VALUE_SCHEMA
 
 from ..utils import replace_jinga_tags, replace_jinga_tags_in_dict
 import json
@@ -125,10 +125,31 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
         return True
 
 
-class ReusableRequestPreAction(models.Model):
-    type = models.CharField(max_length=20, choices=(('set_var', 'set_var'),))
-    param1 = models.TextField(blank=True, null=True)
-    param2 = models.TextField(blank=True, null=True)
+class AccessPointAction(BaseModel, SortableMixin):
+    access_point = models.ForeignKey('AccessPoint', related_name='actions')
+    type = models.CharField(max_length=20, choices=(('update_var', 'update_var'), ('reusable_request', 'reusable_request')))
+    request_definition = models.ForeignKey('ReusableApiRequest', null=True, blank=True)
+    params = JSONTextField(null=True, blank=True, json_schema={})
+
+    # ordering field
+    access_point_order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
+
+    def get_params_json_schema(self):
+        schema = {}
+        if self.type == 'update_var':
+            schema = JSON_OBJ_KEY_VALUE_SCHEMA
+        elif self.type == 'reusable_request' and self.request_definition:
+            schema = JSON_KEY_VALUE_SCHEMA.copy()
+            interface = json.loads(self.request_definition.interface)
+            keys = []
+            for param in interface:
+                keys.append(param.get('key'))
+            schema['items']['properties']['key']['enum'] = keys
+            # import ipdb; ipdb.set_trace()
+        return schema
+
+    class Meta:
+        ordering = ['access_point_order']
 
 
 class IncommingRequest(BaseModel):

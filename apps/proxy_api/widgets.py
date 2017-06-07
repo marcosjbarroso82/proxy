@@ -1,5 +1,6 @@
 from django import forms
 
+
 class ListTextWidget(forms.TextInput):
     """
     ListTextWidget(data_list=['aaa', 'bbb'], name='country-list')
