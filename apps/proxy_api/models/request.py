@@ -137,9 +137,44 @@ class AccessPointAction(BaseModel, SortableMixin):
     def get_params_json_schema(self):
         schema = {}
         if self.type == 'update_var':
-            schema = JSON_OBJ_KEY_VALUE_SCHEMA
+            # schema = JSON_OBJ_KEY_VALUE_SCHEMA
+            schema = {
+                "type": "object",
+                "format": "grid",
+                    "properties": {
+                        "key": {
+                            "type": "string", "propertyOrder": 1, "required": True
+                        },
+                        "value": {
+                            "type": "string", "propertyOrder": 2, "required": True
+                        },
+                        "debug_value": {
+                            "type": "string", "propertyOrder": 3, "required": True
+                        }
+                    },
+                "required": ["key", "value", "debug_value"],
+                "defaultProperties": ["key", "value", "debug_value"]
+            }
         elif self.type == 'reusable_request' and self.request_definition:
-            schema = JSON_KEY_VALUE_SCHEMA.copy()
+            # schema = JSON_KEY_VALUE_SCHEMA.copy()
+            schema = {
+                "type": "array",
+                "format": "table",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "key": {
+                            "type": "string", "propertyOrder": 1
+                        },
+                        "value": {
+                            "type": "string", "propertyOrder": 2
+                        },
+                        "debug_value": {
+                            "type": "string", "propertyOrder": 3
+                        }
+                    }
+                }
+            }
             interface = json.loads(self.request_definition.interface)
             keys = []
             for param in interface:

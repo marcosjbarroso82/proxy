@@ -90,7 +90,25 @@ class AccessPointModelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(AccessPointModelForm, self).__init__(*args, **kwargs)
 
-        schema = JSON_KEY_VALUE_SCHEMA.copy()
+        # schema = JSON_KEY_VALUE_SCHEMA.copy()
+        schema = {
+            "type": "array",
+            "format": "table",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string", "propertyOrder": 1
+                    },
+                    "value": {
+                        "type": "string", "propertyOrder": 2
+                    },
+                    "debug_value": {
+                        "type": "string", "propertyOrder": 3
+                    }
+                }
+            }
+        }
         if self.instance.env and self.instance.env.interface:
             interface = json.loads(self.instance.env.interface)
             keys = []
@@ -140,7 +158,25 @@ class AccessPointReusableRequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(AccessPointReusableRequestForm, self).__init__(*args, **kwargs)
 
-        schema = JSON_KEY_VALUE_SCHEMA.copy()
+        # schema = JSON_KEY_VALUE_SCHEMA.copy()
+        schema = {
+            "type": "array",
+            "format": "table",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string", "propertyOrder": 1
+                    },
+                    "value": {
+                        "type": "string", "propertyOrder": 2
+                    },
+                    "debug_value": {
+                        "type": "string", "propertyOrder": 3
+                    }
+                }
+            }
+        }
         if self.instance.request_definition and self.instance.request_definition.interface:
             interface = json.loads(self.instance.request_definition.interface)
             keys = []
