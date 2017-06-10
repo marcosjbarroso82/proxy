@@ -127,7 +127,7 @@ class AccessPointReusableRequest(BaseModel, JinjaProcessorMixin, SortableMixin):
 
 class AccessPointAction(BaseModel, SortableMixin):
     access_point = models.ForeignKey('AccessPoint', related_name='actions')
-    type = models.CharField(max_length=20, choices=(('update_var', 'update_var'), ('reusable_request', 'reusable_request')))
+    type = models.CharField(max_length=20, choices=(('update_state', 'update_state'), ('reusable_request', 'reusable_request')))
     request_definition = models.ForeignKey('ReusableApiRequest', null=True, blank=True)
     params = JSONTextField(null=True, blank=True, json_schema={})
 
@@ -136,7 +136,7 @@ class AccessPointAction(BaseModel, SortableMixin):
 
     def get_params_json_schema(self):
         schema = {}
-        if self.type == 'update_var':
+        if self.type == 'update_state':
             # schema = JSON_OBJ_KEY_VALUE_SCHEMA
             schema = {
                 "type": "object",
@@ -202,7 +202,7 @@ class AccessPointAction(BaseModel, SortableMixin):
         ordering = ['access_point_order']
 
     def is_valid(self):
-        if self.type == 'update_var':
+        if self.type == 'update_state':
             params = json.loads(self.params)
             if params.get('key') and params.get('value'):
                 return True
@@ -232,29 +232,61 @@ class AccessPointAction(BaseModel, SortableMixin):
         # TODO: Implement
         return False
 
+    def is_debug(self):
+        if self.access_point.app.debug:
+            return True
+        return False
+
     def execute(self, access_point_request, params):
-        result = params.copy()  # TODO: Is it neccessary ??
+        params = params.copy()  # TODO: Is it neccessary ??
         if not self.is_valid():
             return params
+        unprocessed_params = json.loads(self.params)
 
-        if self.type == 'update_var':
-            operation_params = json.loads(self.params)
+
+        if self.type == 'update_state':
             # {{state.update(chat_state='answering')}}
-            key = operation_params.get('key')
-            if self.access_point.app.debug and operation_params.get('debug_value', None):
-                value = operation_params.get('debug_value')
-            else:
-                value = operation_params.get('value')
+            key = unprocessed_params.get('key')
 
-            # operation = '{{ state.update(%s\'%s\')}}' % (key, value)
-            operation = "{{state.update(chat_state='answering')}}"
+            if self.is_debug() and unprocessed_params.get('debug_value', None):
+                value = unprocessed_params.get('debug_value')
+            else:
+                value = unprocessed_params.get('value')
+            value = replace_jinga_tags(value, params)
+            operation = "{{state.update(%s='%s')}}" % (key, value)
             try:
                 replace_jinga_tags(operation, params)
             except:
+                # "{{state.update(state.chat_state='answering')}}"
+                # "{{state.update(chat_state='answering')}}"
+                import ipdb; ipdb.set_trace()
+        elif self.type == 'reusable_request':
+            operation_params = dict()
+            for key in unprocessed_params.keys():
                 # import ipdb; ipdb.set_trace()
-                raise
+                if self.is_debug() and unprocessed_params.get('debug_value', None):
+                    operation_params[key] = unprocessed_params[key]['debug_value']
+                else:
+                    operation_params[key] = unprocessed_params[key]['value']
 
-        return result
+                try:
+                    operation_params[key] = replace_jinga_tags(operation_params[key], params)
+                except:
+                    import ipdb;
+                    ipdb.set_trace()
+
+
+            params['self_param'] = operation_params
+
+
+            # for key in operation_params.keys():
+            #     params['self_param'][operation_params.get('key')] = replace_jinga_tags(operation_params.get('value'),
+            #                                                                 params)  # TODO: get debug value also
+
+            # params = self.execute_pre_request_operation(params)
+            params = self.request_definition.execute(access_point_request, params)
+            # params = self.execute_post_request_operation(params)
+        return params
 
 
 class IncommingRequest(BaseModel):

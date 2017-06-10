@@ -228,7 +228,10 @@ class AccessPointRequestExecution(BaseRequestExecution):
             self.state.save()
 
         if self.request_definition.response_type == 'json':
-            return replace_jinga_tags_in_dict(json.loads(self.request_definition.response), execute_params)
+            try:
+                return replace_jinga_tags_in_dict(json.loads(self.request_definition.response), execute_params)
+            except:
+                import ipdb; ipdb.set_trace()
         elif self.request_definition.response_type == 'text':
             return replace_jinga_tags(self.request_definition.response, execute_params)
 
