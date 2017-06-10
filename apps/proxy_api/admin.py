@@ -36,6 +36,7 @@ class AccessPointActionModelForm(forms.ModelForm):
     class Meta(object):
         model = models.AccessPointAction
         fields = '__all__'
+        readonly_fields = ('todo',)
 
     def __init__(self, *args, **kwargs):
         super(AccessPointActionModelForm, self).__init__(*args, **kwargs)
@@ -44,12 +45,19 @@ class AccessPointActionModelForm(forms.ModelForm):
             self.fields['params'].widget = JSONEditorWidget(schema=self.instance.get_params_json_schema())
 
 
-class AccessPointActionInline(admin.StackedInline):
+class AccessPointActionInline(SortableTabularInline):
 # class AccessPointActionInline(SortableTabularInline):
     model = models.AccessPointAction
     form = AccessPointActionModelForm
     extra = 0
     exclude = ('log',)
+    readonly_fields = ('is_valid', 'todo',)
+
+
+    def todo(self, obj):
+        return 'mostrar las condiciones, inlines y readonly' \
+               '<br/>Dejar editable el request definition solo en el create'
+    todo.allow_tags = True
 
     def formfield_for_dbfield(self, db_field, **kwargs):
         if isinstance(db_field, JSONTextField):
@@ -109,7 +117,7 @@ class AccessPointModelForm(forms.ModelForm):
                 }
             }
         }
-        if self.instance.env and self.instance.env.interface:
+        if self.instance.pk and self.instance.env and self.instance.env.interface:
             interface = json.loads(self.instance.env.interface)
             keys = []
 

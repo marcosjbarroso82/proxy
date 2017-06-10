@@ -157,34 +157,104 @@ class AccessPointAction(BaseModel, SortableMixin):
             }
         elif self.type == 'reusable_request' and self.request_definition:
             # schema = JSON_KEY_VALUE_SCHEMA.copy()
+
+            if self.request_definition.interface:
+                interface = json.loads(self.request_definition.interface)
+            else:
+                interface = []
+
+
             schema = {
-                "type": "array",
-                "format": "table",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "key": {
-                            "type": "string", "propertyOrder": 1
-                        },
-                        "value": {
-                            "type": "string", "propertyOrder": 2
-                        },
-                        "debug_value": {
-                            "type": "string", "propertyOrder": 3
-                        }
-                    }
+                "type": "object",
+                "format": "grid",
+                "properties": {
+                    # "type": "object",
+                    # "properties": {
+                        # "key": {
+                        #     "type": "string", "propertyOrder": 1
+                        # },
+                        # "value": {
+                        #     "type": "string", "propertyOrder": 2
+                        # },
+                        # "debug_value": {
+                        #     "type": "string", "propertyOrder": 3
+                        # }
+                    # }
                 }
             }
-            interface = json.loads(self.request_definition.interface)
             keys = []
             for param in interface:
-                keys.append(param.get('key'))
-            schema['items']['properties']['key']['enum'] = keys
+                # keys.append(param.get('key'))
+                key_value_sub_schema = {
+                    "type": "object",
+                    "format": "grid",
+                    "properties": {
+                        "value": {"type": "string"},
+                        "debug_value": {"type": "string"}
+                    }
+                }
+                schema['properties'][param.get('key')] = key_value_sub_schema
+            # schema['items']['properties']['key']['enum'] = keys
             # import ipdb; ipdb.set_trace()
         return schema
 
     class Meta:
         ordering = ['access_point_order']
+
+    def is_valid(self):
+        if self.type == 'update_var':
+            params = json.loads(self.params)
+            if params.get('key') and params.get('value'):
+                return True
+        elif self.type == 'reusable_request' and self.request_definition:
+            if self.params and self.params != 'null':  # TODO: Better handle null
+                params = json.loads(self.params)
+            else:
+                params = dict()
+
+            # Check all Required params are being provided
+            if self.request_definition.interface:
+                interface = json.loads(self.request_definition.interface)
+            else:
+                interface = []
+
+            for interface_param in interface:
+                if interface_param.get('required', None):
+                    try:
+                        key = interface_param.get('key')
+
+                        if key not in params.keys() or not params[key].get('value', None):
+                            return False
+                    except:
+                        import ipdb; ipdb.set_trace()
+            return True
+
+        # TODO: Implement
+        return False
+
+    def execute(self, access_point_request, params):
+        result = params.copy()  # TODO: Is it neccessary ??
+        if not self.is_valid():
+            return params
+
+        if self.type == 'update_var':
+            operation_params = json.loads(self.params)
+            # {{state.update(chat_state='answering')}}
+            key = operation_params.get('key')
+            if self.access_point.app.debug and operation_params.get('debug_value', None):
+                value = operation_params.get('debug_value')
+            else:
+                value = operation_params.get('value')
+
+            # operation = '{{ state.update(%s\'%s\')}}' % (key, value)
+            operation = "{{state.update(chat_state='answering')}}"
+            try:
+                replace_jinga_tags(operation, params)
+            except:
+                # import ipdb; ipdb.set_trace()
+                raise
+
+        return result
 
 
 class IncommingRequest(BaseModel):

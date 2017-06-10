@@ -54,6 +54,10 @@ class AccessPoint(BaseRequest):
         for reusable_request in self.reusable_requests.all():
             if not reusable_request.is_valid():
                 return False
+
+        for action in self.actions.all():
+            if not action.is_valid():
+                return False
         return True
 
     def __str__(self):
@@ -198,6 +202,11 @@ class AccessPointRequestExecution(BaseRequestExecution):
             params = req.execute(access_point_request=self, params=params)
         return params
 
+    def execute_actions(self, params):
+        for action in self.request_definition.actions.all():  # TODO: make sure to order this query
+            params = action.execute(access_point_request=self, params=params)
+        return params
+
     def execute(self, execute_params):
         try:
             execute_params['state'] = self.get_state(execute_params).value
@@ -207,9 +216,10 @@ class AccessPointRequestExecution(BaseRequestExecution):
 
         # Execute Operations and requests
         execute_params = self.request_definition.env.execute_pre_request_operation(execute_params)
-        execute_params = self.request_definition.execute_pre_request_operation(execute_params)
-        execute_params = self.execute_reusable_requests(execute_params)
-        execute_params = self.request_definition.execute_post_request_operation(execute_params)
+        # execute_params = self.request_definition.execute_pre_request_operation(execute_params)
+        # execute_params = self.execute_reusable_requests(execute_params)
+        # execute_params = self.request_definition.execute_post_request_operation(execute_params)
+        execute_params = self.execute_actions(execute_params)
         execute_params = self.request_definition.env.execute_post_request_operation(execute_params)
 
         # PATCH: Don't save state if none is tracked

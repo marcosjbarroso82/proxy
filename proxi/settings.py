@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'apps.proxy_api',
+    'apps.chat',
     'apps.poll',
 
     'adminsortable',
