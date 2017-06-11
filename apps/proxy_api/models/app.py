@@ -1,5 +1,5 @@
 from django.db import models
-from .base import BaseModel, BaseVariable, JinjaProcessorMixin
+from .base import BaseModel, JinjaProcessorMixin
 from ..utils import replace_jinga_tags
 from ..fields import JSONTextField
 from ..constants import JSON_KEY_VALUE_SCHEMA, JSON_INTERFACE_SCHEMA, JSON_KEY_ENV_VALUE_SCHEMA

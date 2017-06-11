@@ -51,7 +51,7 @@ class AccessPointActionInline(SortableTabularInline):
     form = AccessPointActionModelForm
     extra = 0
     exclude = ('log',)
-    readonly_fields = ('is_valid', 'todo',)
+    readonly_fields = ('is_valid', )
 
 
     def todo(self, obj):

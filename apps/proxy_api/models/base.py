@@ -41,16 +41,6 @@ class BaseRequestExecution(BaseModel):
         abstract = True
 
 
-class BaseVariable(models.Model):
-    type = models.CharField(max_length=20, choices=[('jinja', 'jinja'), ])
-    key = models.CharField(max_length=20)
-    value = models.TextField()
-    debug_value = models.TextField(null=True, blank=True)
-
-    class Meta:
-        abstract = True
-
-
 class BaseRequest(BaseModel, JinjaProcessorMixin):
     name = models.CharField(max_length=20, unique=True)
     method = models.CharField(choices=REQUEST_METHODS, max_length=10)

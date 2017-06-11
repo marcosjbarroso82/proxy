@@ -3,11 +3,11 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 
 from apps.proxy_api.models.access_point import AccessPoint
-from .base import BaseRequest, BaseRequestExecution, BaseModel, JinjaProcessorMixin
+from .base import BaseRequest, BaseRequestExecution, BaseModel
 from adminsortable.models import SortableMixin
 from jsonfield import JSONField
 from ..fields import JSONTextField
-from ..constants import JSON_INTERFACE_SCHEMA, JSON_KEY_VALUE_SCHEMA, JSON_OBJ_KEY_VALUE_SCHEMA
+from ..constants import JSON_INTERFACE_SCHEMA, PRE_PORST_ACTIONS_JSON_SCHEMA
 
 from ..utils import replace_jinga_tags, replace_jinga_tags_in_dict
 import json
@@ -66,6 +66,7 @@ class AccessPointAction(BaseModel, SortableMixin):
     type = models.CharField(max_length=20, choices=(('update_state', 'update_state'), ('reusable_request', 'reusable_request')))
     request_definition = models.ForeignKey('ReusableApiRequest', null=True, blank=True)
     params = JSONTextField(null=True, blank=True, json_schema={})
+    post_actions = JSONTextField(null=True, blank=True, json_schema=PRE_PORST_ACTIONS_JSON_SCHEMA)
 
     # ordering field
     access_point_order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
@@ -179,9 +180,7 @@ class AccessPointAction(BaseModel, SortableMixin):
             return params
         unprocessed_params = json.loads(self.params)
 
-
         if self.type == 'update_state':
-            # {{state.update(chat_state='answering')}}
             key = unprocessed_params.get('key')
 
             if self.is_debug() and unprocessed_params.get('debug_value', None):
@@ -190,38 +189,45 @@ class AccessPointAction(BaseModel, SortableMixin):
                 value = unprocessed_params.get('value')
             value = replace_jinga_tags(value, params)
             operation = "{{state.update(%s='%s')}}" % (key, value)
-            try:
-                replace_jinga_tags(operation, params)
-            except:
-                # "{{state.update(state.chat_state='answering')}}"
-                # "{{state.update(chat_state='answering')}}"
-                import ipdb; ipdb.set_trace()
+            replace_jinga_tags(operation, params)
         elif self.type == 'reusable_request':
             operation_params = dict()
             for key in unprocessed_params.keys():
-                # import ipdb; ipdb.set_trace()
                 if self.is_debug() and unprocessed_params.get('debug_value', None):
                     operation_params[key] = unprocessed_params[key]['debug_value']
                 else:
                     operation_params[key] = unprocessed_params[key]['value']
-
-                try:
-                    operation_params[key] = replace_jinga_tags(operation_params[key], params)
-                except:
-                    import ipdb;
-                    ipdb.set_trace()
-
-
+                operation_params[key] = replace_jinga_tags(operation_params[key], params)
             params['self_param'] = operation_params
-
-
-            # for key in operation_params.keys():
-            #     params['self_param'][operation_params.get('key')] = replace_jinga_tags(operation_params.get('value'),
-            #                                                                 params)  # TODO: get debug value also
-
-            # params = self.execute_pre_request_operation(params)
             params = self.request_definition.execute(access_point_request, params)
-            # params = self.execute_post_request_operation(params)
+
+
+        params = self.execute_post_actions(params=params)
+        return params
+
+    def execute_post_actions(self, params):
+        params = params.copy()  # TODO: Is it neccessary ??
+        post_actions = json.loads(self.post_actions)
+
+        for action in post_actions:
+            # TODO: Check action condition
+            # TODO: Check is valid
+            # action = post_actions[0]
+            try:
+                if action.get('type') == 'update_state':
+                    params.keys()
+                    key = action.get('key')
+                    value = action.get('value')
+
+                    operation = "{{state.update(%s=%s)}}" % (key, value)
+                    replace_jinga_tags(operation, params)
+            except:
+                # TODO: I should've check validity
+                pass
+        # import ipdb; ipdb.set_trace()
+        # exit
+        # cont
+
         return params
 
 
